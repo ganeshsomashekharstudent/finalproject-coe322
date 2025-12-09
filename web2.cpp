@@ -194,18 +194,16 @@ public:
     }
 
     // exercise 50.8
-    //earlier method of globalclick
+    // earlier method of globalclick
     /*
     ProbabilityDistribution globalclick(ProbabilityDistribution currentstate)
     {
         ProbabilityDistribution nextstate(currentstate.probs.size()); // all probabilities 0 rn
 
-        for (int i = 0; i < pages.size(); i++)
-        {
+        for (int i = 0; i < pages.size(); i++){
             double prob = currentstate.get(i); // probability of being at page i
 
-            if (pages[i]->pageLinks.empty())
-            {
+            if (pages[i]->pageLinks.empty()){
                 // exercise 50.9
                 int random = rand() % pages.size();
                 nextstate.probs[random] += prob; // sees if i is a dead end
@@ -216,8 +214,7 @@ public:
                 // if page not dead end, then see probability of each link on page
                 // share is probability split evenly among all linked pages
                 double share = prob / (pages[i]->pageLinks.size());
-                for (auto linkeds : pages[i]->pageLinks)
-                {
+                for (auto linkeds : pages[i]->pageLinks){
                     // loops over linked pages and adds "share" to the probability of each linkedpage
                     nextstate.probs[linkeds->index] += share;
                 }
@@ -241,14 +238,17 @@ public:
             int numLinks = pages[i]->pageLinks.size();
             double prob;
 
-            if (numLinks == 0){
+            if (numLinks == 0)
+            {
                 prob = 1.0;
             }
-            else{
+            else
+            {
                 prob = 1.0 / numLinks;
             }
 
-            for (auto linked : pages[i]->pageLinks){
+            for (auto linked : pages[i]->pageLinks)
+            {
                 Matrix[i][linked->index] = prob;
             }
         }
@@ -272,7 +272,7 @@ public:
 
     vector<double> globalclick(vector<double> currentstate, int numPages)
     {
-        vector<vector<double>> Matrix = transitionMatrix(pages.size());             // earlier transition matrix
+        vector<vector<double>> Matrix = transitionMatrix(pages.size());              // earlier transition matrix
         vector<double> nextstate = matrixVectorMultiplication(Matrix, currentstate); // earlier Matrix vector multiplication
 
         // normalize the probability vector
@@ -344,10 +344,110 @@ void shortest(shared_ptr<Page> start, int numPages)
     for (int i = 0; i < distance.size(); i++)
     {
         if (distance[i] != -1)
+        {
             cout << "  Page " << i << " reachable in " << distance[i] << " steps" << endl;
+        }
     }
 }
 
 int main()
 {
+    int nPages = 20;      // total number of pages in the web
+    int averageLinks = 2; // average number of links per page
+    int steps = 1000;     // number of iterations for PageRank
+    int hypeLinks = 5;    // number of pages linking to the hyped page (for exercise 50.10)
+
+    // seeding RNG
+    srand(time(nullptr));
+
+    // exercise 50.3
+    cout << "--- exercise50.3 ---" << endl;
+    Web internet(nPages);
+    internet.create_random_links(averageLinks);
+    cout << "Web created with " << internet.number_of_pages() << " pages and " << averageLinks << " average links per page." << endl;
+    cout << "------------------------------------------" << endl;
+
+    // --- exercise 50.10 ---
+    // hyped pages
+    cout << "--- Hype Page (Exercise 50.10) ---" << endl;
+    internet.hypePage(hypeLinks);
+    int totalPages = internet.number_of_pages();
+    cout << "Total Amount of pages after hype: " << totalPages << endl;
+    cout << "-----------------------------------" << endl;
+
+    // exercise 50.7
+    cout << "--- Setting up PageRank ---" << endl;
+    // equal distribution (1/n) per page
+    vector<double> currentState(totalPages);
+    for (int i = 0; i < totalPages; ++i)
+    {
+        currentState[i] = (1.0 / totalPages);
+    }
+
+    cout << "Initial normalized distribution:" << endl;
+    // top scores
+    int minimum = min(totalPages, 5);
+    for (int i = 0; i < minimum; ++i)
+    {
+        cout << " Page " << i << ": " << currentState[i] << endl;
+    }
+    cout << "------------------------------------" << endl;
+
+    // 50.8 and 50.11
+    cout << "--- 50.8 and 50.11 ---" << endl;
+    vector<double> nextState = currentState;
+
+    for (int i = 0; i < steps; ++i)
+    {
+        // matrix globalclick
+        nextState = internet.globalclick(nextState, totalPages);
+
+        cout << "After " << i + 1 << " clicks:" << endl;
+        // print probability for hyped page but only if it exists
+        if (totalPages > nPages)
+        {
+            cout << "  Hyped Page (" << (totalPages - 1) << " ): " << nextState[(totalPages - 1)] << endl;
+        }
+
+        // print top 5
+        cout << "  Top 5 pages:" << endl;
+        // find highest probabilities
+        vector<pair<double, int>> rankedPages;
+        for (int j = 0; j < totalPages; ++j)
+        {
+            rankedPages.push_back({nextState[j], j});
+        }
+        sort(rankedPages.rbegin(), rankedPages.rend());
+
+        for (int j = 0; j < min(totalPages, 5); ++j)
+        {
+            cout << " Page: " << (rankedPages[j].second) << ": " << rankedPages[j].first << endl;
+        }
+
+        // convergence check
+        double diff = 0.0;
+        for (int j = 0; j < totalPages; ++j)
+        {
+            diff += abs(nextState[j] - currentState[j]);
+        }
+
+        if (diff < 1e-6)
+        {
+            cout << "\nConverged after " << (i + 1) << "steps." << endl;
+            break;
+        }
+
+        currentState = nextState;
+    }
+    cout << "------------------------------------------------" << endl;
+
+    // 50.6 ---
+    // runs BFS
+    cout << "--- 50.6: Shortest path ---" << endl;
+    // start at first page
+    shared_ptr<Page> startPage = internet.pages[0];
+    shortest(startPage, totalPages);
+    cout << "--------------------------------------" << endl;
+
+    return 0;
 }
